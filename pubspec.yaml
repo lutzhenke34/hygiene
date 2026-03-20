@@ -5,7 +5,7 @@ publish_to: none
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -13,6 +13,7 @@ dependencies:
   flutter_riverpod: ^2.5.1
   supabase_flutter: ^2.12.0
   file_picker: ^8.1.2
+  shared_preferences: ^2.5.4  # für das Speichern des zuletzt ausgewählten Betriebs
 
 dev_dependencies:
   flutter_test:
