@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../dashboard/admin_dashboard_page.dart';
 import '../dashboard/employee_home_page.dart';
+import '../betrieb/betrieb_auswahl_page.dart'; // ← korrekt (klein geschrieben)
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -46,18 +47,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
-    // Erfolgreich → Navigation
-    if (user.role == 'admin') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const EmployeeHomePage()),
-      );
-    }
+    // Erfolgreich → immer zur Betriebsauswahl (auch bei employee)
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => BetriebAuswahlPage()), // ← kein const!
+    );
   }
 
   @override
@@ -74,7 +68,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo / Titel-Bereich
                   const Icon(
                     Icons.clean_hands_rounded,
                     size: 80,
@@ -82,14 +75,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Hier war const → jetzt ohne const, damit shade800 geht
                   Text(
                     'Hygiene App',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green[800], // shade800 als Array-Zugriff
+                      color: Colors.green[800],
                     ),
                   ),
 
@@ -106,7 +98,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                   const SizedBox(height: 48),
 
-                  // ── Login-Kasten ──
                   Card(
                     elevation: 6,
                     shape: RoundedRectangleBorder(
