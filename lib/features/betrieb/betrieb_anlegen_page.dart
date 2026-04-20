@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hygiene_app/providers/auth_provider.dart';
+import '../../providers/auth_provider.dart';
 
 import '../../core/supabase_client.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/selected_betrieb_provider.dart';
+
+import '../dashboard/admin_dashboard_page.dart';
+import '../dashboard/pages/employee_home_page.dart';
+import '../../../providers/auth_provider.dart';
+
+
 
 class BetriebAnlegenPage extends ConsumerStatefulWidget {
   const BetriebAnlegenPage({super.key});
@@ -14,44 +24,67 @@ class BetriebAnlegenPage extends ConsumerStatefulWidget {
 class _BetriebAnlegenPageState extends ConsumerState<BetriebAnlegenPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Textfelder
   final _nameController = TextEditingController();
   final _adresseController = TextEditingController();
   final _plzController = TextEditingController();
   final _ortController = TextEditingController();
   final _telefonController = TextEditingController();
   final _emailController = TextEditingController();
+  final _sonstigesController = TextEditingController();
 
-  // Auswahl
-  int? _selectedBetriebsartId;
-  bool _haccpVerantwortlich = true; // Default: ja, Admin ist verantwortlich
+  int? _selectedHauptkategorieId;
+  int? _selectedUnterkategorieId;
+  bool _haccpVerantwortlich = true;
+  bool _showSonstigesFreitext = false;
 
   bool _isLoading = false;
-  List<Map<String, dynamic>> _betriebsarten = [];
+
+  List<Map<String, dynamic>> _hauptkategorien = [];
+  List<Map<String, dynamic>> _unterkategorien = [];
 
   @override
   void initState() {
     super.initState();
-    _loadBetriebsarten();
+    _loadHauptkategorien();
   }
 
-  Future<void> _loadBetriebsarten() async {
+  Future<void> _loadHauptkategorien() async {
     try {
-      final response = await supabase
+      final res = await supabase
           .from('betriebsarten')
           .select('id, name')
           .order('name');
 
       setState(() {
-        _betriebsarten = List<Map<String, dynamic>>.from(response);
+        _hauptkategorien = List<Map<String, dynamic>>.from(res);
       });
     } catch (e) {
-      print('Fehler beim Laden der Betriebsarten: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Laden: $e')),
-        );
-      }
+      print('Fehler beim Laden der Hauptkategorien: $e');
+    }
+  }
+
+  Future<void> _loadUnterkategorien(int? hauptkategorieId) async {
+    if (hauptkategorieId == null) {
+      setState(() {
+        _unterkategorien = [];
+        _selectedUnterkategorieId = null;
+        _showSonstigesFreitext = false;
+      });
+      return;
+    }
+
+    try {
+      final res = await supabase
+          .from('betriebsunterkategorien')
+          .select('id, name')
+          .eq('betriebsart_id', hauptkategorieId)
+          .order('name');
+
+      setState(() {
+        _unterkategorien = List<Map<String, dynamic>>.from(res);
+      });
+    } catch (e) {
+      print('Fehler beim Laden der Unterkategorien: $e');
     }
   }
 
@@ -65,7 +98,9 @@ class _BetriebAnlegenPageState extends ConsumerState<BetriebAnlegenPage> {
           .from('betriebe')
           .insert({
             'name': _nameController.text.trim(),
-            'betriebsart_id': _selectedBetriebsartId,
+            'betriebsart_id': _selectedHauptkategorieId,
+            'betriebsunterkategorie_id': _selectedUnterkategorieId,
+            'sonstiges': _showSonstigesFreitext ? _sonstigesController.text.trim() : null,
             'adresse': _adresseController.text.trim(),
             'plz': _plzController.text.trim(),
             'ort': _ortController.text.trim(),
@@ -81,7 +116,7 @@ class _BetriebAnlegenPageState extends ConsumerState<BetriebAnlegenPage> {
 
       final newBetriebId = response['id'] as String;
 
-      // Aktuellen User als Admin zuordnen
+      // Verknüpfung mit User
       final user = ref.read(authProvider);
       if (user != null) {
         await supabase.from('user_betrieb').insert({
@@ -91,27 +126,31 @@ class _BetriebAnlegenPageState extends ConsumerState<BetriebAnlegenPage> {
           'is_favorit': true,
           'last_used': DateTime.now().toIso8601String(),
         });
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('selected_betrieb_id', newBetriebId);
+        await prefs.setString('selected_betrieb_name', _nameController.text.trim());
+
+        await ref.read(selectedBetriebIdProvider.notifier).set(newBetriebId);
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Betrieb erfolgreich angelegt!'),
-          backgroundColor: Colors.green,
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AdminDashboardPage(),
         ),
       );
-
-      Navigator.pop(context, true); // Zurück + neu laden
     } catch (e) {
-      print('Fehler beim Speichern: $e');
+      print('Fehler beim Anlegen: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Speichern: $e')),
+          SnackBar(content: Text('Fehler beim Anlegen: $e')),
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -123,6 +162,7 @@ class _BetriebAnlegenPageState extends ConsumerState<BetriebAnlegenPage> {
     _ortController.dispose();
     _telefonController.dispose();
     _emailController.dispose();
+    _sonstigesController.dispose();
     super.dispose();
   }
 
@@ -130,9 +170,8 @@ class _BetriebAnlegenPageState extends ConsumerState<BetriebAnlegenPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Neuen Betrieb anlegen'),
-        backgroundColor: Colors.green.shade700,
-        foregroundColor: Colors.white,
+        title: const Text('Betrieb anlegen'),
+        backgroundColor: Colors.green,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -145,105 +184,113 @@ class _BetriebAnlegenPageState extends ConsumerState<BetriebAnlegenPage> {
                   children: [
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Betriebsname *',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) => value?.trim().isEmpty ?? true ? 'Pflichtfeld' : null,
+                      decoration: const InputDecoration(labelText: 'Betriebsname *'),
+                      validator: (v) => v!.trim().isEmpty ? 'Pflichtfeld' : null,
                     ),
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<int>(
-                      value: _selectedBetriebsartId,
-                      decoration: const InputDecoration(
-                        labelText: 'Betriebsart *',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _betriebsarten.map((art) {
+                      value: _selectedHauptkategorieId,
+                      decoration: const InputDecoration(labelText: 'Hauptkategorie'),
+                      items: _hauptkategorien.map((e) {
                         return DropdownMenuItem<int>(
-                          value: art['id'],
-                          child: Text(art['name']),
+                          value: e['id'],
+                          child: Text(e['name']),
                         );
                       }).toList(),
-                      onChanged: (value) => setState(() => _selectedBetriebsartId = value),
-                      validator: (value) => value == null ? 'Pflichtfeld' : null,
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedHauptkategorieId = val;
+                          _selectedUnterkategorieId = null;
+                          _showSonstigesFreitext = false;
+                        });
+                        _loadUnterkategorien(val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (_selectedHauptkategorieId != null)
+                      DropdownButtonFormField<int>(
+                        value: _selectedUnterkategorieId,
+                        decoration: const InputDecoration(labelText: 'Unterkategorie'),
+                        items: [
+                          ..._unterkategorien.map((e) => DropdownMenuItem<int>(
+                                value: e['id'],
+                                child: Text(e['name']),
+                              )),
+                          const DropdownMenuItem<int>(
+                            value: 0,
+                            child: Text('Sonstiges (Freitext)'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == 0) {
+                              _selectedUnterkategorieId = null;
+                              _showSonstigesFreitext = true;
+                            } else {
+                              _selectedUnterkategorieId = val;
+                              _showSonstigesFreitext = false;
+                            }
+                          });
+                        },
+                      ),
+
+                    if (_showSonstigesFreitext) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _sonstigesController,
+                        decoration: const InputDecoration(labelText: 'Sonstiges'),
+                        maxLines: 3,
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    TextFormField(
+                      controller: _adresseController,
+                      decoration: const InputDecoration(labelText: 'Adresse'),
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
-                      controller: _adresseController,
-                      decoration: const InputDecoration(
-                        labelText: 'Straße & Hausnummer',
-                        border: OutlineInputBorder(),
-                      ),
+                      controller: _plzController,
+                      decoration: const InputDecoration(labelText: 'PLZ'),
+                      keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _plzController,
-                            decoration: const InputDecoration(
-                              labelText: 'PLZ',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _ortController,
-                            decoration: const InputDecoration(
-                              labelText: 'Ort',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
+                    TextFormField(
+                      controller: _ortController,
+                      decoration: const InputDecoration(labelText: 'Ort'),
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
                       controller: _telefonController,
-                      decoration: const InputDecoration(
-                        labelText: 'Telefon',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: const InputDecoration(labelText: 'Telefon'),
                       keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'E-Mail',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: const InputDecoration(labelText: 'E-Mail'),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 24),
 
                     SwitchListTile(
-                      title: const Text('HACCP-Verantwortung'),
-                      subtitle: const Text('Ist der Admin / Betriebsleiter für HACCP verantwortlich?'),
+                      title: const Text('HACCP-Verantwortlich'),
                       value: _haccpVerantwortlich,
-                      onChanged: (value) => setState(() => _haccpVerantwortlich = value),
-                      activeColor: Colors.green.shade700,
+                      onChanged: (v) => setState(() => _haccpVerantwortlich = v),
                     ),
+
                     const SizedBox(height: 32),
 
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _saveBetrieb,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.green.shade700,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Betrieb speichern', style: TextStyle(fontSize: 18)),
+                      onPressed: _saveBetrieb,
+                      child: const Text('Betrieb anlegen'),
                     ),
                   ],
                 ),

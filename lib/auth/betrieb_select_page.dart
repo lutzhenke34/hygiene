@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../dashboard/admin_dashboard.dart';
+import '../features/features/admin_dashboard_page.dart';
 
 class BetriebSelectPage extends StatefulWidget {
   final Map<String, dynamic> profile;

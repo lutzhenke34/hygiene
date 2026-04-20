@@ -1,15 +1,23 @@
-import 'package:flutter/material.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AdminDashboardPage extends StatelessWidget {
-  const AdminDashboardPage({super.key});
+part 'admin_providers.g.dart';
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Admin Dashboard')),
-      body: const Center(
-        child: Text('Übersicht kommt hier rein'),
-      ),
-    );
-  }
+// ==================== MITARBEITER PROVIDER ====================
+
+@riverpod
+Future<List<Map<String, dynamic>>> mitarbeiter(
+  MitarbeiterRef ref,
+  String betriebId,
+) async {
+  if (betriebId.isEmpty) return [];
+
+  final supabase = Supabase.instance.client;
+
+  final response = await supabase
+      .from('mitarbeiter')
+      .select()
+      .eq('betrieb_id', betriebId);
+
+  return List<Map<String, dynamic>>.from(response);
 }

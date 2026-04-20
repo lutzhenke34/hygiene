@@ -1,34 +1,31 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
+import '../core/supabase_client.dart';
+import 'package:hygiene_app/models/user_model.dart';
 
 class AuthService {
-  final supabase = Supabase.instance.client;
-
-  String hashPin(String pin) {
-    final bytes = utf8.encode(pin);
-    return sha256.convert(bytes).toString();
-  }
-
   Future<UserModel?> login(String phone, String pin) async {
-  try {
-    final response = await supabase
-        .from('users')
-        .select()
-        .eq('phone', phone)
-        .eq('pin', pin)
-        .maybeSingle();
+    try {
+      // Telefonnummer normalisieren (Leerzeichen, Bindestriche und Plus entfernen)
+      final cleanPhone = phone.replaceAll(RegExp(r'[\s\-+]'), '');
 
-    print('RESPONSE: $response'); // 👈 wichtig
+      final response = await supabase
+          .from('users')
+          .select()
+          .eq('phone', cleanPhone)
+          .eq('pin', pin)
+          .maybeSingle();
 
-    if (response == null) {
-      print('Kein Benutzer gefunden');
+      print('Supabase Login Response: $response');
+
+      if (response == null) {
+        print('Kein Benutzer gefunden für $cleanPhone / $pin');
+        return null;
+      }
+
+      return UserModel.fromJson(response);
+    } catch (e, stackTrace) {
+      print('Login Fehler: $e');
+      print('Stacktrace: $stackTrace');
       return null;
     }
-
-    return UserModel.fromMap(response);
-  } catch (e) {
-    print('FEHLER LOGIN: $e'); // 👈 wichtig
-    return null;
   }
-}
+}   // ← Diese Klammer muss ganz am Ende stehen

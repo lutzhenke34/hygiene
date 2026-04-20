@@ -4,6 +4,7 @@ import '../../../core/network/supabase_provider.dart';
 import '../domain/betrieb.dart';
 import '../domain/betrieb_repository.dart';
 import 'betrieb_dto.dart';
+import '../betrieb/betrieb_auswahl_page.dart'; // ← das ist der entscheidende Import!
 
 final betriebRepositoryProvider = Provider<BetriebRepository>((ref) {
   final client = ref.read(supabaseProvider);
