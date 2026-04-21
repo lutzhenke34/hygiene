@@ -52,6 +52,5 @@ final onlineMitarbeiterIdsProvider =
 final onlineMitarbeiterProvider =
     Provider.family<AsyncValue<int>, String>((ref, String betriebId) {
   final onlineIdsAsync = ref.watch(onlineMitarbeiterIdsProvider(betriebId));
-
   return onlineIdsAsync.whenData((ids) => ids.length);
 });
