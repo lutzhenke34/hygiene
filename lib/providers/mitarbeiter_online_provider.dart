@@ -1,4 +1,4 @@
-// lib/providers/mitarbeiter_online_provider.dart
+import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,37 +6,44 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 final onlineMitarbeiterProvider =
     StreamProvider.family<int, String>((ref, String betriebId) {
   final client = Supabase.instance.client;
+  final controller = StreamController<int>();
+  final channel = client.channel('online-users');
 
-  return client
-      .from('mitarbeiter')
-      .stream(primaryKey: ['id'])
-      .eq('betrieb_id', betriebId)
-      .map((rows) {
-        final now = DateTime.now();
-        int activeCount = 0;
+  void emitCount() {
+    final presenceState = channel.presenceState();
+    final onlineUsers = <String>{};
 
-        for (final row in rows) {
-          final lastLoginRaw = row['last_login'];
+    for (final entry in presenceState.entries) {
+      for (final payload in entry.value) {
+        final payloadBetriebId = payload.payload['betrieb_id'];
+        final role = payload.payload['role'];
+        final userId = payload.payload['user_id'];
 
-          if (lastLoginRaw == null) continue;
-
-          DateTime? lastLogin;
-
-          if (lastLoginRaw is String) {
-            lastLogin = DateTime.tryParse(lastLoginRaw);
-          } else if (lastLoginRaw is DateTime) {
-            lastLogin = lastLoginRaw;
-          }
-
-          if (lastLogin == null) continue;
-
-          final diff = now.difference(lastLogin);
-
-          if (diff < const Duration(minutes: 8)) {
-            activeCount++;
-          }
+        if (payloadBetriebId == betriebId &&
+            role != 'admin' &&
+            userId is String &&
+            userId.isNotEmpty) {
+          onlineUsers.add(userId);
         }
+      }
+    }
 
-        return activeCount;
-      });
+    controller.add(onlineUsers.length);
+  }
+
+  channel
+      .onPresenceSync((_) => emitCount())
+      .subscribe((status, [error]) {
+    if (status == RealtimeSubscribeStatus.subscribed) {
+      emitCount();
+    }
+  });
+
+  ref.onDispose(() async {
+    await channel.unsubscribe();
+    await client.removeChannel(channel);
+    await controller.close();
+  });
+
+  return controller.stream;
 });
