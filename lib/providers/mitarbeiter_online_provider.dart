@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final onlineMitarbeiterProvider =
-    StreamProvider.family<int, String>((ref, String betriebId) {
+final onlineMitarbeiterIdsProvider =
+    StreamProvider.family<Set<String>, String>((ref, String betriebId) {
   final client = Supabase.instance.client;
-  final controller = StreamController<int>();
+  final controller = StreamController<Set<String>>();
   final channel = client.channel('online-users');
 
-  void emitCount() {
+  void emitIds() {
     final presenceState = channel.presenceState();
     final onlineUsers = <String>{};
 
@@ -29,14 +29,14 @@ final onlineMitarbeiterProvider =
       }
     }
 
-    controller.add(onlineUsers.length);
+    controller.add(onlineUsers);
   }
 
   channel
-      .onPresenceSync((_) => emitCount())
+      .onPresenceSync((_) => emitIds())
       .subscribe((status, [error]) {
     if (status == RealtimeSubscribeStatus.subscribed) {
-      emitCount();
+      emitIds();
     }
   });
 
@@ -47,4 +47,11 @@ final onlineMitarbeiterProvider =
   });
 
   return controller.stream;
+});
+
+final onlineMitarbeiterProvider =
+    Provider.family<AsyncValue<int>, String>((ref, String betriebId) {
+  final onlineIdsAsync = ref.watch(onlineMitarbeiterIdsProvider(betriebId));
+
+  return onlineIdsAsync.whenData((ids) => ids.length);
 });

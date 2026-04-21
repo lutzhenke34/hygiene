@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../../../providers/mitarbeiter_provider.dart';
+import '../../../providers/mitarbeiter_online_provider.dart';
 import '../models/mitarbeiter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -19,6 +20,7 @@ class MitarbeiterVerwaltungPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mitarbeiterAsync = ref.watch(mitarbeiterNotifierProvider(betriebId));
+    final onlineIdsAsync = ref.watch(onlineMitarbeiterIdsProvider(betriebId));
 
     return Scaffold(
       appBar: AppBar(
@@ -34,31 +36,95 @@ class MitarbeiterVerwaltungPage extends ConsumerWidget {
             return const Center(child: Text('Keine Mitarbeiter vorhanden'));
           }
 
+          final onlineIds = onlineIdsAsync.value ?? <String>{};
+
+          final sortedMitarbeiter = [...mitarbeiter]
+            ..sort((a, b) {
+              final aOnline = onlineIds.contains(a.id);
+              final bOnline = onlineIds.contains(b.id);
+
+              if (aOnline && !bOnline) return -1;
+              if (!aOnline && bOnline) return 1;
+
+              return a.nachname.toLowerCase().compareTo(
+                    b.nachname.toLowerCase(),
+                  );
+            });
+
           return ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: mitarbeiter.length,
+            itemCount: sortedMitarbeiter.length,
             itemBuilder: (context, index) {
-              final m = mitarbeiter[index];
+              final m = sortedMitarbeiter[index];
+              final isOnline = onlineIds.contains(m.id);
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green.shade100,
-                    child: const Icon(Icons.person, color: Colors.green),
+                  leading: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: isOnline
+                            ? Colors.green.shade100
+                            : Colors.grey.shade200,
+                        child: Icon(
+                          Icons.person,
+                          color: isOnline
+                              ? Colors.green.shade700
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                      Positioned(
+                        right: -1,
+                        bottom: -1,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: isOnline
+                                ? Colors.green
+                                : Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   title: Text('${m.vorname} ${m.nachname}'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        isOnline ? 'Online' : 'Offline',
+                        style: TextStyle(
+                          color: isOnline
+                              ? Colors.green.shade700
+                              : Colors.grey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       if (m.kontakt != null) Text('Kontakt: ${m.kontakt}'),
                       if (m.rolle != null) Text('Rolle: ${m.rolle}'),
                       if (m.letzteSchulung != null)
-                        Text('Schulung: ${m.letzteSchulung!.toString().split(' ')[0]}'),
+                        Text(
+                          'Schulung: ${m.letzteSchulung!.toString().split(' ')[0]}',
+                        ),
                       if (m.hygieneausweisUrl != null)
-                        const Text('✅ Hygieneausweis vorhanden', style: TextStyle(color: Colors.green)),
-                      Text('Hygieneaufgaben: ${m.canManageHygiene ? "Ja" : "Nein"}'),
-                      Text('Aufgaben verwalten: ${m.canManageGeraete ? "Ja" : "Nein"}'),
+                        const Text(
+                          '✅ Hygieneausweis vorhanden',
+                          style: TextStyle(color: Colors.green),
+                        ),
+                      Text(
+                        'Hygieneaufgaben: ${m.canManageHygiene ? "Ja" : "Nein"}',
+                      ),
+                      Text(
+                        'Aufgaben verwalten: ${m.canManageGeraete ? "Ja" : "Nein"}',
+                      ),
                     ],
                   ),
                   trailing: Row(
@@ -81,7 +147,9 @@ class MitarbeiterVerwaltungPage extends ConsumerWidget {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Mitarbeiter löschen?'),
-                              content: Text('Möchten Sie "${m.vorname} ${m.nachname}" wirklich löschen?'),
+                              content: Text(
+                                'Möchten Sie "${m.vorname} ${m.nachname}" wirklich löschen?',
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, false),
@@ -89,7 +157,13 @@ class MitarbeiterVerwaltungPage extends ConsumerWidget {
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Löschen', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                  child: const Text(
+                                    'Löschen',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -97,16 +171,27 @@ class MitarbeiterVerwaltungPage extends ConsumerWidget {
 
                           if (confirm == true) {
                             try {
-                              await ref.read(mitarbeiterNotifierProvider(betriebId).notifier).delete(m.id);
+                              await ref
+                                  .read(
+                                    mitarbeiterNotifierProvider(betriebId)
+                                        .notifier,
+                                  )
+                                  .delete(m.id);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('${m.vorname} ${m.nachname} wurde gelöscht')),
+                                  SnackBar(
+                                    content: Text(
+                                      '${m.vorname} ${m.nachname} wurde gelöscht',
+                                    ),
+                                  ),
                                 );
                               }
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Fehler beim Löschen: $e')),
+                                  SnackBar(
+                                    content: Text('Fehler beim Löschen: $e'),
+                                  ),
                                 );
                               }
                             }
@@ -134,8 +219,6 @@ class MitarbeiterVerwaltungPage extends ConsumerWidget {
   }
 }
 
-// ====================== ADD / EDIT DIALOG ======================
-
 class AddMitarbeiterDialog extends ConsumerStatefulWidget {
   final String betriebId;
   final Mitarbeiter? bestehenderMitarbeiter;
@@ -147,7 +230,8 @@ class AddMitarbeiterDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AddMitarbeiterDialog> createState() => _AddMitarbeiterDialogState();
+  ConsumerState<AddMitarbeiterDialog> createState() =>
+      _AddMitarbeiterDialogState();
 }
 
 class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
@@ -156,7 +240,7 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
   final vornameController = TextEditingController();
   final nachnameController = TextEditingController();
   final kontaktController = TextEditingController();
-  final pinController = TextEditingController();           // ← NEU
+  final pinController = TextEditingController();
 
   DateTime? letzteSchulung;
   PlatformFile? _selectedFile;
@@ -177,7 +261,7 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
       vornameController.text = m.vorname;
       nachnameController.text = m.nachname;
       kontaktController.text = m.kontakt ?? '';
-      pinController.text = m.pin;                         // ← NEU
+      pinController.text = m.pin;
       _selectedRolle = m.rolle;
       letzteSchulung = m.letzteSchulung;
 
@@ -185,14 +269,15 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
       _canManageGeraete = m.canManageGeraete;
       _canViewAllProtokolle = m.canViewAllProtokolle;
     } else {
-      pinController.text = '1234';                        // Standard-PIN beim Neuanlegen
+      pinController.text = '1234';
     }
     _loadRollen();
   }
 
   Future<void> _loadRollen() async {
     try {
-      final res = await Supabase.instance.client.from('rollen').select('name');
+      final res =
+          await Supabase.instance.client.from('rollen').select('name');
       setState(() => _rollen = List<Map<String, dynamic>>.from(res));
     } catch (e) {
       print('Fehler beim Laden der Rollen: $e');
@@ -211,7 +296,10 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Abbrechen')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Abbrechen'),
+          ),
           TextButton(
             onPressed: () {
               final text = controller.text.trim();
@@ -226,12 +314,16 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
     if (newRole == null || newRole.isEmpty) return;
 
     try {
-      await Supabase.instance.client.from('rollen').insert({'name': newRole});
+      await Supabase.instance.client
+          .from('rollen')
+          .insert({'name': newRole});
       await _loadRollen();
       setState(() => _selectedRolle = newRole);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fehler beim Erstellen der Rolle')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fehler beim Erstellen der Rolle')),
+        );
       }
     }
   }
@@ -255,11 +347,15 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedRolle == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bitte eine Rolle auswählen')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bitte eine Rolle auswählen')),
+      );
       return;
     }
     if (pinController.text.trim().length != 4) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN muss 4-stellig sein')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PIN muss 4-stellig sein')),
+      );
       return;
     }
 
@@ -269,7 +365,9 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
 
     try {
       if (_selectedFile != null) {
-        final notifier = ref.read(mitarbeiterNotifierProvider(widget.betriebId).notifier);
+        final notifier = ref.read(
+          mitarbeiterNotifierProvider(widget.betriebId).notifier,
+        );
 
         Uint8List fileBytes;
         if (_selectedFile!.bytes != null) {
@@ -280,9 +378,13 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
           throw Exception('Keine Dateidaten verfügbar');
         }
 
-        final safeFileName = '${DateTime.now().millisecondsSinceEpoch}_${_selectedFile!.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')}';
+        final safeFileName =
+            '${DateTime.now().millisecondsSinceEpoch}_${_selectedFile!.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')}';
 
-        hygieneausweisUrl = await notifier.uploadHygieneausweis(fileBytes, safeFileName);
+        hygieneausweisUrl = await notifier.uploadHygieneausweis(
+          fileBytes,
+          safeFileName,
+        );
       }
 
       final mitarbeiter = Mitarbeiter(
@@ -290,9 +392,11 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
         betriebId: widget.betriebId,
         vorname: vornameController.text.trim(),
         nachname: nachnameController.text.trim(),
-        kontakt: kontaktController.text.trim().isEmpty ? null : kontaktController.text.trim(),
+        kontakt: kontaktController.text.trim().isEmpty
+            ? null
+            : kontaktController.text.trim(),
         rolle: _selectedRolle!,
-        pin: pinController.text.trim(),                    // ← WICHTIG: PIN wird gespeichert
+        pin: pinController.text.trim(),
         letzteSchulung: letzteSchulung,
         hygieneausweisUrl: hygieneausweisUrl,
         canManageHygiene: _canManageHygiene,
@@ -301,7 +405,9 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
         canViewAllProtokolle: _canViewAllProtokolle,
       );
 
-      await ref.read(mitarbeiterNotifierProvider(widget.betriebId).notifier).addOrUpdate(mitarbeiter);
+      await ref
+          .read(mitarbeiterNotifierProvider(widget.betriebId).notifier)
+          .addOrUpdate(mitarbeiter);
 
       if (mounted) {
         ref.invalidate(mitarbeiterNotifierProvider(widget.betriebId));
@@ -312,7 +418,9 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fehler: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -324,14 +432,18 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
     vornameController.dispose();
     nachnameController.dispose();
     kontaktController.dispose();
-    pinController.dispose();           // ← NEU
+    pinController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.bestehenderMitarbeiter == null ? 'Neuer Mitarbeiter' : 'Mitarbeiter bearbeiten'),
+      title: Text(
+        widget.bestehenderMitarbeiter == null
+            ? 'Neuer Mitarbeiter'
+            : 'Mitarbeiter bearbeiten',
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -350,21 +462,21 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
               ),
               TextFormField(
                 controller: kontaktController,
-                decoration: const InputDecoration(labelText: 'Kontakt (Telefon)'),
+                decoration:
+                    const InputDecoration(labelText: 'Kontakt (Telefon)'),
               ),
               const SizedBox(height: 16),
-
-              // PIN-Feld
               TextFormField(
                 controller: pinController,
-                decoration: const InputDecoration(labelText: 'PIN (4-stellig) *'),
+                decoration:
+                    const InputDecoration(labelText: 'PIN (4-stellig) *'),
                 keyboardType: TextInputType.number,
                 maxLength: 4,
-                validator: (v) => (v == null || v.trim().length != 4) ? 'PIN muss genau 4-stellig sein' : null,
+                validator: (v) => (v == null || v.trim().length != 4)
+                    ? 'PIN muss genau 4-stellig sein'
+                    : null,
               ),
-
               const SizedBox(height: 16),
-
               Row(
                 children: [
                   Expanded(
@@ -373,9 +485,13 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
                       decoration: const InputDecoration(labelText: 'Rolle *'),
                       items: _rollen.map((r) {
                         final name = r['name'] as String;
-                        return DropdownMenuItem(value: name, child: Text(name));
+                        return DropdownMenuItem(
+                          value: name,
+                          child: Text(name),
+                        );
                       }).toList(),
-                      onChanged: (value) => setState(() => _selectedRolle = value),
+                      onChanged: (value) =>
+                          setState(() => _selectedRolle = value),
                       validator: (v) => v == null ? 'Bitte Rolle auswählen' : null,
                     ),
                   ),
@@ -386,35 +502,39 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 20),
-
-              const Text('Berechtigungen', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Berechtigungen',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               SwitchListTile(
                 title: const Text('Darf Hygieneaufgaben verwalten'),
                 subtitle: const Text('Hygieneaufgaben, Checklisten, etc.'),
                 value: _canManageHygiene,
-                onChanged: (value) => setState(() => _canManageHygiene = value),
+                onChanged: (value) =>
+                    setState(() => _canManageHygiene = value),
               ),
               SwitchListTile(
                 title: const Text('Darf Aufgaben verwalten'),
                 subtitle: const Text('Allgemeine Aufgaben, Anweisungen, etc.'),
                 value: _canManageGeraete,
-                onChanged: (value) => setState(() => _canManageGeraete = value),
+                onChanged: (value) =>
+                    setState(() => _canManageGeraete = value),
               ),
               SwitchListTile(
                 title: const Text('Darf alle Protokolle einsehen'),
                 value: _canViewAllProtokolle,
-                onChanged: (value) => setState(() => _canViewAllProtokolle = value),
+                onChanged: (value) =>
+                    setState(() => _canViewAllProtokolle = value),
               ),
-
               const SizedBox(height: 16),
-
               ListTile(
                 title: const Text('Letzte Hygiene-Schulung'),
-                subtitle: Text(letzteSchulung != null
-                    ? letzteSchulung!.toString().split(' ')[0]
-                    : 'Nicht gesetzt'),
+                subtitle: Text(
+                  letzteSchulung != null
+                      ? letzteSchulung!.toString().split(' ')[0]
+                      : 'Nicht gesetzt',
+                ),
                 trailing: const Icon(Icons.calendar_today),
                 onTap: () async {
                   final date = await showDatePicker(
@@ -423,23 +543,27 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
                     firstDate: DateTime(2020),
                     lastDate: DateTime.now(),
                   );
-                  if (date != null) setState(() => letzteSchulung = date);
+                  if (date != null) {
+                    setState(() => letzteSchulung = date);
+                  }
                 },
               ),
-
               const SizedBox(height: 16),
-
               ElevatedButton.icon(
                 onPressed: _pickHygieneFile,
                 icon: const Icon(Icons.upload_file),
                 label: const Text('Hygieneausweis hochladen'),
-                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
               ),
-
               if (_selectedFile != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Text('Ausgewählt: ${_selectedFile!.name}', style: const TextStyle(color: Colors.green)),
+                  child: Text(
+                    'Ausgewählt: ${_selectedFile!.name}',
+                    style: const TextStyle(color: Colors.green),
+                  ),
                 ),
             ],
           ),
@@ -453,7 +577,11 @@ class _AddMitarbeiterDialogState extends ConsumerState<AddMitarbeiterDialog> {
         ElevatedButton(
           onPressed: _isSaving ? null : _save,
           child: _isSaving
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Text('Speichern'),
         ),
       ],
