@@ -13,17 +13,19 @@ final onlineMitarbeiterProvider =
     final presenceState = channel.presenceState();
     final onlineUsers = <String>{};
 
-    for (final presence in presenceState) {
-      final payload = presence.payload;
-      final payloadBetriebId = payload['betrieb_id'];
-      final role = payload['role'];
-      final userId = payload['user_id'];
+    for (final singleState in presenceState) {
+      for (final presence in singleState.presences) {
+        final payload = presence.payload;
+        final payloadBetriebId = payload['betrieb_id'];
+        final role = payload['role'];
+        final userId = payload['user_id'];
 
-      if (payloadBetriebId == betriebId &&
-          role != 'admin' &&
-          userId is String &&
-          userId.isNotEmpty) {
-        onlineUsers.add(userId);
+        if (payloadBetriebId == betriebId &&
+            role != 'admin' &&
+            userId is String &&
+            userId.isNotEmpty) {
+          onlineUsers.add(userId);
+        }
       }
     }
 
