@@ -5,8 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hygiene_app/providers/auth_provider.dart';
 import 'package:hygiene_app/providers/selected_betrieb_provider.dart';
 import 'package:hygiene_app/providers/mitarbeiter_provider.dart';
+import 'package:hygiene_app/providers/aufgabe_provider.dart';
 
-import 'hygiene_aufgaben_page.dart';
 import '../models/mitarbeiter.dart';
 
 class EmployeeHomePage extends ConsumerStatefulWidget {
@@ -31,13 +31,12 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
       final user = ref.read(authProvider);
       if (user == null) {
         setState(() {
-          _errorMessage = "Nicht eingeloggt";
+          _errorMessage = 'Nicht eingeloggt';
           _isLoading = false;
         });
         return;
       }
 
-      // Betrieb des Mitarbeiters laden
       final response = await Supabase.instance.client
           .from('mitarbeiter')
           .select('betrieb_id')
@@ -47,15 +46,21 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
       final betriebId = response?['betrieb_id'] as String?;
 
       if (betriebId != null && betriebId.isNotEmpty) {
-        ref.read(selectedBetriebIdProvider.notifier).set(betriebId);
+        await ref.read(selectedBetriebIdProvider.notifier).set(betriebId);
       } else {
-        setState(() => _errorMessage = "Kein Betrieb zugewiesen. Bitte Admin kontaktieren.");
+        setState(() {
+          _errorMessage = 'Kein Betrieb zugewiesen. Bitte Admin kontaktieren.';
+        });
       }
     } catch (e) {
       debugPrint('Fehler beim Laden des Betriebs: $e');
-      setState(() => _errorMessage = "Fehler beim Laden: $e");
+      setState(() {
+        _errorMessage = 'Fehler beim Laden: $e';
+      });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -86,7 +91,9 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
     }
 
     if (user == null) {
-      return const Scaffold(body: Center(child: Text('Nicht eingeloggt')));
+      return const Scaffold(
+        body: Center(child: Text('Nicht eingeloggt')),
+      );
     }
 
     return Scaffold(
@@ -99,7 +106,9 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await ref.read(authProvider.notifier).logout();
-              if (context.mounted) Navigator.pushReplacementNamed(context, '/');
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/');
+              }
             },
           ),
         ],
@@ -110,11 +119,21 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
         data: (betriebId) {
           if (betriebId == null || betriebId.isEmpty) {
             return const Center(
-              child: Text('Kein Betrieb zugewiesen.\n\nBitte Admin kontaktieren.', textAlign: TextAlign.center),
+              child: Text(
+                'Kein Betrieb zugewiesen.\n\nBitte Admin kontaktieren.',
+                textAlign: TextAlign.center,
+              ),
             );
           }
 
-          final mitarbeiterAsync = ref.watch(mitarbeiterNotifierProvider(betriebId));
+          final mitarbeiterAsync =
+              ref.watch(mitarbeiterNotifierProvider(betriebId));
+
+          final employeeAufgabenAsync = ref.watch(
+            employeeAufgabenProvider(
+              (betriebId: betriebId, rolle: user.role ?? ''),
+            ),
+          );
 
           return mitarbeiterAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -133,73 +152,153 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
                 ),
               );
 
-              final vorname = current.vorname.isNotEmpty 
-                  ? current.vorname 
+              final vorname = current.vorname.isNotEmpty
+                  ? current.vorname
                   : (user.name?.split(' ').first ?? 'Mitarbeiter');
-
-              final canHygiene = current.canManageHygiene ?? false;
-              final canAufgaben = current.canManageGeraete ?? false;
-              final canProtokolle = current.canViewAllProtokolle ?? false;
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Hallo $vorname!', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Hallo $vorname!',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text('Rolle: ${current.rolle ?? user.role ?? "Mitarbeiter"}', 
-                         style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                    const SizedBox(height: 40),
+                    Text(
+                      'Rolle: ${current.rolle ?? user.role ?? "Mitarbeiter"}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
 
-                    if (!canHygiene && !canAufgaben && !canProtokolle)
-                      const Center(child: Text('Keine Berechtigungen vorhanden.\nBitte kontaktieren Sie den Admin.', textAlign: TextAlign.center))
-                    else
-                      Column(
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.green.shade100),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (canHygiene)
-                            _buildBigKachel('Hygieneaufgaben', Icons.clean_hands, Colors.green, () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => HygieneAufgabenPage(betriebId: betriebId)));
-                            }),
-                          const SizedBox(height: 16),
-                          if (canAufgaben)
-                            _buildBigKachel('Meine Aufgaben', Icons.checklist, Colors.orange, () {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kommt bald')));
-                            }),
-                          const SizedBox(height: 16),
-                          if (canProtokolle)
-                            _buildBigKachel('Protokolle', Icons.assignment_turned_in, Colors.purple, () {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kommt bald')));
-                            }),
+                          Text(
+                            'Meine offenen Aufgaben',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade900,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Hier sehen Sie alle offenen Aufgaben passend zu Ihrer Rolle und zur aktuell aktiven Schicht.',
+                          ),
                         ],
                       ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    employeeAufgabenAsync.when(
+                      loading: () => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      error: (e, _) => Text(
+                        'Fehler beim Laden der Aufgaben: $e',
+                      ),
+                      data: (aufgaben) {
+                        if (aufgaben.isEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Text(
+                              'Für Ihre aktuelle Rolle und Schicht gibt es gerade keine offenen Aufgaben.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 15),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: aufgaben.map((a) {
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              child: ListTile(
+                                leading: const Icon(
+                                  Icons.assignment,
+                                  color: Colors.orange,
+                                  size: 30,
+                                ),
+                                title: Text(
+                                  a.titel,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (a.beschreibung != null &&
+                                        a.beschreibung!.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(a.beschreibung!),
+                                      ),
+                                    if (a.faelligBis != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Fällig bis: ${a.faelligBis!.toString().split(' ')[0]}',
+                                        ),
+                                      ),
+                                    if (a.rolle != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text('Rolle: ${a.rolle}'),
+                                      ),
+                                  ],
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green,
+                                  ),
+                                  onPressed: () async {
+                                    await ref
+                                        .read(
+                                          aufgabeNotifierProvider(betriebId)
+                                              .notifier,
+                                        )
+                                        .toggleErledigt(a.id);
+                                  },
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
                   ],
                 ),
               );
             },
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildBigKachel(String title, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Card(
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            children: [
-              CircleAvatar(radius: 36, backgroundColor: color.withOpacity(0.15), child: Icon(icon, size: 40, color: color)),
-              const SizedBox(width: 24),
-              Expanded(child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold))),
-            ],
-          ),
-        ),
       ),
     );
   }

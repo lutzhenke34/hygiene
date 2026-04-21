@@ -49,20 +49,39 @@ class SchichtNotifier extends _$SchichtNotifier {
   }
 
   // Hilfsmethode: Aktuelle Schicht basierend auf Uhrzeit ermitteln
-  Future<Schicht?> getAktuelleSchicht(String betriebId) async {
-    final jetzt = DateTime.now();
-    final schichten = await future; // wartet auf build()
+ Future<Schicht?> getAktuelleSchicht(String betriebId) async {
+  final jetzt = DateTime.now();
+  final schichten = await future;
 
-    for (var schicht in schichten) {
-      final start = DateTime(jetzt.year, jetzt.month, jetzt.day, 
-          schicht.startZeit.hour, schicht.startZeit.minute);
-      final ende = DateTime(jetzt.year, jetzt.month, jetzt.day, 
-          schicht.endeZeit.hour, schicht.endeZeit.minute);
+  for (final schicht in schichten) {
+    var start = DateTime(
+      jetzt.year,
+      jetzt.month,
+      jetzt.day,
+      schicht.startZeit.hour,
+      schicht.startZeit.minute,
+    );
 
-      if (jetzt.isAfter(start) && jetzt.isBefore(ende)) {
-        return schicht;
-      }
+    var ende = DateTime(
+      jetzt.year,
+      jetzt.month,
+      jetzt.day,
+      schicht.endeZeit.hour,
+      schicht.endeZeit.minute,
+    );
+
+    if (ende.isBefore(start)) {
+      ende = ende.add(const Duration(days: 1));
     }
-    return null; // keine passende Schicht
+
+    final aktivAb = start.subtract(const Duration(hours: 1));
+
+    if (jetzt.isAfter(aktivAb) && jetzt.isBefore(ende)) {
+      return schicht;
+    }
   }
+
+  return null;
+}
+
 }
