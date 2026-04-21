@@ -1,3 +1,5 @@
+// lib/features/dashboard/admin_dashboard_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,10 +22,12 @@ class AdminDashboardPage extends ConsumerStatefulWidget {
   const AdminDashboardPage({super.key});
 
   @override
-  ConsumerState<AdminDashboardPage> createState() => _AdminDashboardPageState();
+  ConsumerState<AdminDashboardPage> createState() =>
+      _AdminDashboardPageState();
 }
 
-class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
+class _AdminDashboardPageState
+    extends ConsumerState<AdminDashboardPage> {
   String? _betriebName;
 
   @override
@@ -47,7 +51,8 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
 
     if (mounted) {
       setState(() {
-        _betriebName = name ?? (id != null ? 'Le Pot' : 'Kein Betrieb ausgewählt');
+        _betriebName =
+            name ?? (id != null ? 'Le Pot' : 'Kein Betrieb ausgewählt');
       });
     }
   }
@@ -97,37 +102,59 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
           }
           return _buildContent(context, betriebId);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () =>
+            const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Fehler: $e')),
       ),
     );
   }
 
   Widget _buildContent(BuildContext context, String betriebId) {
-    final mitarbeiterAsync = ref.watch(mitarbeiterNotifierProvider(betriebId));
-    final hygieneAsync = ref.watch(hygieneAufgabeNotifierProvider(betriebId));
-    final aufgabenAsync = ref.watch(aufgabeNotifierProvider(betriebId));
-    final onlineAsync = ref.watch(onlineMitarbeiterProvider(betriebId));
+    final mitarbeiterAsync =
+        ref.watch(mitarbeiterNotifierProvider(betriebId));
+    final hygieneAsync =
+        ref.watch(hygieneAufgabeNotifierProvider(betriebId));
+    final aufgabenAsync =
+        ref.watch(aufgabeNotifierProvider(betriebId));
+    final onlineAsync =
+        ref.watch(onlineMitarbeiterProvider(betriebId));
 
     return mitarbeiterAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Fehler beim Laden: $e')),
+      loading: () =>
+          const Center(child: CircularProgressIndicator()),
+      error: (e, _) =>
+          Center(child: Text('Fehler beim Laden: $e')),
       data: (mitarbeiterListe) {
         final totalMitarbeiter = mitarbeiterListe.length;
-        final eingeloggte = onlineAsync.value ?? 0;
 
-        final offeneHygiene = hygieneAsync.value?.where((a) => !a.erledigt).length ?? 0;
-        final gesamtHygiene = hygieneAsync.value?.length ?? 0;
+        // ✅ WICHTIG: korrektes Handling
+        final eingeloggte = onlineAsync.when(
+          data: (v) => v,
+          loading: () => 0,
+          error: (_, __) => 0,
+        );
 
-        final offeneAufgaben = aufgabenAsync.value?.where((a) => !a.erledigt).length ?? 0;
-        final gesamtAufgaben = aufgabenAsync.value?.length ?? 0;
+        final offeneHygiene = hygieneAsync.value
+                ?.where((a) => !a.erledigt)
+                .length ??
+            0;
+        final gesamtHygiene =
+            hygieneAsync.value?.length ?? 0;
+
+        final offeneAufgaben = aufgabenAsync.value
+                ?.where((a) => !a.erledigt)
+                .length ??
+            0;
+        final gesamtAufgaben =
+            aufgabenAsync.value?.length ?? 0;
 
         return Column(
           children: [
-            // Header
+            // HEADER bleibt unverändert
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 50, 16, 24),
+              padding:
+                  const EdgeInsets.fromLTRB(16, 50, 16, 24),
               decoration: const BoxDecoration(
                 color: Colors.blue,
                 borderRadius: BorderRadius.only(
@@ -138,18 +165,24 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
                     children: [
                       const SizedBox(width: 48),
                       Text(
                         'HACCP Protokolle',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
                               color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                              fontWeight:
+                                  FontWeight.bold,
                             ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.logout, color: Colors.white),
+                        icon: const Icon(Icons.logout,
+                            color: Colors.white),
                         tooltip: 'Abmelden',
                         onPressed: _logout,
                       ),
@@ -158,7 +191,9 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                   const SizedBox(height: 8),
                   Text(
                     _betriebName ?? 'Le Pot',
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16),
                   ),
                   const SizedBox(height: 16),
 
@@ -166,12 +201,16 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                     onPressed: () async {
                       await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const BetriebAuswahlPage()),
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const BetriebAuswahlPage()),
                       );
                       await _loadSelectedBetriebName();
                     },
-                    icon: const Icon(Icons.swap_horiz, color: Colors.blue),
-                    label: const Text('Betrieb wechseln'),
+                    icon: const Icon(Icons.swap_horiz,
+                        color: Colors.blue),
+                    label:
+                        const Text('Betrieb wechseln'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.blue,
@@ -181,26 +220,33 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
               ),
             ),
 
-            // Hauptinhalt
+            // CONTENT bleibt gleich
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding:
+                    const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 20),
                     Text(
                       'Übersicht – ${_betriebName ?? 'Le Pot'}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade800,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(
+                            fontWeight:
+                                FontWeight.bold,
+                            color: Colors
+                                .green.shade800,
                           ),
                     ),
                     const SizedBox(height: 30),
 
-                    // Kacheln
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildStatKachel(
                           icon: Icons.people,
@@ -210,7 +256,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                           color: Colors.blue,
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => MitarbeiterVerwaltungPage(betriebId: betriebId)),
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  MitarbeiterVerwaltungPage(
+                                      betriebId:
+                                          betriebId),
+                            ),
                           ),
                         ),
                         _buildStatKachel(
@@ -221,7 +272,12 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                           color: Colors.green,
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => HygieneAufgabenPage(betriebId: betriebId)),
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  HygieneAufgabenPage(
+                                      betriebId:
+                                          betriebId),
+                            ),
                           ),
                         ),
                         _buildStatKachel(
@@ -232,7 +288,10 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                           color: Colors.orange,
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const VerwaltungPage()),
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const VerwaltungPage(),
+                            ),
                           ),
                         ),
                       ],
@@ -242,18 +301,37 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
 
                     Center(
                       child: ElevatedButton.icon(
-                        onPressed: () => Navigator.push(
+                        onPressed: () =>
+                            Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const VerwaltungPage()),
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const VerwaltungPage(),
+                          ),
                         ),
-                        icon: const Icon(Icons.settings, size: 26),
-                        label: const Text('Verwaltung'),
+                        icon: const Icon(Icons.settings,
+                            size: 26),
+                        label:
+                            const Text('Verwaltung'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade800,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          backgroundColor:
+                              Colors.green.shade800,
+                          foregroundColor:
+                              Colors.white,
+                          padding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                  vertical: 18),
+                          textStyle: const TextStyle(
+                              fontSize: 18,
+                              fontWeight:
+                                  FontWeight.w600),
+                          shape:
+                              RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                                    14),
+                          ),
                         ),
                       ),
                     ),
@@ -279,32 +357,46 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(16),
         child: Card(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius:
+                  BorderRadius.circular(16)),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+            padding: const EdgeInsets.symmetric(
+                vertical: 20,
+                horizontal: 12),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize:
+                  MainAxisSize.min,
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: color.withOpacity(0.12),
-                  child: Icon(icon, size: 34, color: color),
+                  backgroundColor:
+                      color.withOpacity(0.12),
+                  child: Icon(icon,
+                      size: 34,
+                      color: color),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   label,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontWeight:
+                          FontWeight.w600,
+                      fontSize: 15),
+                  textAlign:
+                      TextAlign.center,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   '$current / $total',
                   style: TextStyle(
                     fontSize: 26,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                     color: color,
                   ),
                 ),
