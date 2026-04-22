@@ -19,12 +19,18 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final vorname = json['vorname']?.toString().trim();
+    final nachname = json['nachname']?.toString().trim();
+    final fullName = [vorname, nachname]
+        .where((value) => value != null && value.isNotEmpty)
+        .join(' ');
+
     return UserModel(
       id: json['id'] ?? '',
-      name: json['name'],
+      name: json['name'] ?? (fullName.isNotEmpty ? fullName : null),
       email: json['email'],
-      phone: json['phone'],
-      role: json['role'],
+      phone: json['phone'] ?? json['kontakt'] ?? json['telefon'],
+      role: json['role'] ?? json['rolle'],
       betriebId: json['betrieb_id'],
       isAdmin: json['is_admin'] ?? false,
     );

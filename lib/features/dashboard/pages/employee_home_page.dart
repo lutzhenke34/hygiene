@@ -130,18 +130,6 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
           final mitarbeiterAsync =
               ref.watch(mitarbeiterNotifierProvider(betriebId));
 
-          final employeeAufgabenAsync = ref.watch(
-            employeeAufgabenProvider(
-              (betriebId: betriebId, rolle: user.role ?? ''),
-            ),
-          );
-
-          final employeeHygieneAufgabenAsync = ref.watch(
-            employeeHygieneAufgabenProvider(
-              (betriebId: betriebId, rolle: user.role ?? ''),
-            ),
-          );
-
           return mitarbeiterAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Fehler: $e')),
@@ -162,6 +150,22 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
               final vorname = current.vorname.isNotEmpty
                   ? current.vorname
                   : (user.name?.split(' ').first ?? 'Mitarbeiter');
+              final aktuelleRolle =
+                  current.rolle?.trim().isNotEmpty == true
+                      ? current.rolle!.trim()
+                      : (user.role ?? '').trim();
+
+              final employeeAufgabenAsync = ref.watch(
+                employeeAufgabenProvider(
+                  (betriebId: betriebId, rolle: aktuelleRolle),
+                ),
+              );
+
+              final employeeHygieneAufgabenAsync = ref.watch(
+                employeeHygieneAufgabenProvider(
+                  (betriebId: betriebId, rolle: aktuelleRolle),
+                ),
+              );
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -177,7 +181,7 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Rolle: ${current.rolle ?? user.role ?? "Mitarbeiter"}',
+                      'Rolle: ${aktuelleRolle.isNotEmpty ? aktuelleRolle : "Mitarbeiter"}',
                       style: const TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
