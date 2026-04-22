@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../features/dashboard/models/hygiene_aufgabe.dart';
+import 'schicht_provider.dart';
 
 part 'hygiene_aufgabe_provider.g.dart';
 
@@ -61,3 +62,30 @@ class HygieneAufgabeNotifier extends _$HygieneAufgabeNotifier {
     }
   }
 }
+
+typedef EmployeeHygieneAufgabenParams = ({String betriebId, String rolle});
+
+final employeeHygieneAufgabenProvider =
+    FutureProvider.family<List<HygieneAufgabe>, EmployeeHygieneAufgabenParams>(
+  (ref, params) async {
+    final schichtNotifier =
+        ref.read(schichtNotifierProvider(params.betriebId).notifier);
+    final aktuelleSchicht =
+        await schichtNotifier.getAktuelleSchicht(params.betriebId);
+
+    final alleAufgaben = await ref.watch(
+      hygieneAufgabeNotifierProvider(params.betriebId).future,
+    );
+
+    return alleAufgaben.where((a) {
+      final rollePasst = a.rolle == null ||
+          a.rolle == 'Alle' ||
+          a.rolle!.toLowerCase() == params.rolle.toLowerCase();
+
+      final schichtPasst =
+          a.schichtId == null || a.schichtId == aktuelleSchicht?.id;
+
+      return rollePasst && schichtPasst && !a.erledigt;
+    }).toList();
+  },
+);

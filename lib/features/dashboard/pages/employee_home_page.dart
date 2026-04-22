@@ -6,6 +6,7 @@ import 'package:hygiene_app/providers/auth_provider.dart';
 import 'package:hygiene_app/providers/selected_betrieb_provider.dart';
 import 'package:hygiene_app/providers/mitarbeiter_provider.dart';
 import 'package:hygiene_app/providers/aufgabe_provider.dart';
+import 'package:hygiene_app/providers/hygiene_aufgabe_provider.dart';
 
 import '../models/mitarbeiter.dart';
 
@@ -131,6 +132,12 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
 
           final employeeAufgabenAsync = ref.watch(
             employeeAufgabenProvider(
+              (betriebId: betriebId, rolle: user.role ?? ''),
+            ),
+          );
+
+          final employeeHygieneAufgabenAsync = ref.watch(
+            employeeHygieneAufgabenProvider(
               (betriebId: betriebId, rolle: user.role ?? ''),
             ),
           );
@@ -283,6 +290,125 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
                                         .read(
                                           aufgabeNotifierProvider(betriebId)
                                               .notifier,
+                                        )
+                                        .toggleErledigt(a.id);
+                                  },
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.blue.shade100),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Meine offenen Hygieneaufgaben',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade900,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Hier sehen Sie alle offenen Hygieneaufgaben passend zu Ihrer Rolle und zur aktuell aktiven Schicht.',
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    employeeHygieneAufgabenAsync.when(
+                      loading: () => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      error: (e, _) => Text(
+                        'Fehler beim Laden der Hygieneaufgaben: $e',
+                      ),
+                      data: (aufgaben) {
+                        if (aufgaben.isEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Text(
+                              'Für Ihre aktuelle Rolle und Schicht gibt es gerade keine offenen Hygieneaufgaben.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 15),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: aufgaben.map((a) {
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              child: ListTile(
+                                leading: const Icon(
+                                  Icons.cleaning_services,
+                                  color: Colors.blue,
+                                  size: 30,
+                                ),
+                                title: Text(
+                                  a.titel,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (a.beschreibung != null &&
+                                        a.beschreibung!.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(a.beschreibung!),
+                                      ),
+                                    if (a.faelligBis != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Fällig bis: ${a.faelligBis!.toString().split(' ')[0]}',
+                                        ),
+                                      ),
+                                    if (a.rolle != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text('Rolle: ${a.rolle}'),
+                                      ),
+                                  ],
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green,
+                                  ),
+                                  onPressed: () async {
+                                    await ref
+                                        .read(
+                                          hygieneAufgabeNotifierProvider(
+                                            betriebId,
+                                          ).notifier,
                                         )
                                         .toggleErledigt(a.id);
                                   },
