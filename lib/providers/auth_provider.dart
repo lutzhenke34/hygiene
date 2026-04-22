@@ -39,12 +39,13 @@ class AuthNotifier extends StateNotifier<UserModel?> {
   }
 
   // LOGOUT
-  Future<void> logout() async {
-    // 🔴 Presence stoppen (OFFLINE)
-    _presence.stop();
+ Future<void> logout() async {
+  _presence.stop();
 
-    state = null;
+  await _service.logout(state);
 
-    print('✅ Logout erfolgreich');
-  }
+  state = null;
+
+  print('Logout erfolgreich');
+}
 }

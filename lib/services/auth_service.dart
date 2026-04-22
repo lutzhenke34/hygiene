@@ -6,10 +6,9 @@ class AuthService {
 
   Future<UserModel?> login(String phone, String pin) async {
     try {
-      print('🔍 Versuche Login mit Telefon: $phone | PIN: $pin');
+      print('Versuche Login mit Telefon: $phone | PIN: $pin');
 
-      // === 1. Mitarbeiter Login (Tabelle: mitarbeiter mit kontakt) ===
-      print('→ Suche in mitarbeiter-Tabelle (Spalte: kontakt)...');
+      // Mitarbeiter-Login
       var response = await supabase
           .from('mitarbeiter')
           .select()
@@ -21,17 +20,20 @@ class AuthService {
         final user = UserModel.fromJson(response);
 
         await _updateLastLogin('mitarbeiter', response['id']);
+        await _setMitarbeiterOnline(
+          mitarbeiterId: response['id'],
+          betriebId: response['betrieb_id'],
+        );
 
-        print('✅ Mitarbeiter-Login erfolgreich: ${user.name ?? ''} (${user.role ?? 'Mitarbeiter'})');
+        print('Mitarbeiter-Login erfolgreich: ${user.name ?? ''}');
         return user;
       }
 
-      // === 2. Admin Login (Tabelle: users mit phone) ===
-      print('→ Suche in users-Tabelle als Admin (Spalte: phone)...');
+      // Admin-Login
       response = await supabase
           .from('users')
           .select()
-          .eq('phone', phone)           // Hier ist es "phone"
+          .eq('phone', phone)
           .eq('pin', pin)
           .maybeSingle();
 
@@ -43,36 +45,73 @@ class AuthService {
 
         await _updateLastLogin('users', response['id']);
 
-        print('✅ Admin-Login erfolgreich: ${user.name ?? response['email'] ?? 'Admin'}');
+        print('Admin-Login erfolgreich');
         return user;
       }
 
-      print('❌ Kein Benutzer gefunden für Telefon=$phone und PIN=$pin');
+      print('Kein Benutzer gefunden');
       return null;
-
     } catch (e) {
-      print('❌ Login-Fehler: $e');
+      print('Login-Fehler: $e');
       return null;
     }
   }
 
-  // Hilfsmethode zum Aktualisieren von last_login
+  Future<void> logout(UserModel? user) async {
+    try {
+      if (user != null && (user.role?.toLowerCase() != 'admin')) {
+        await supabase
+            .from('anwesenheit')
+            .update({
+              'aktiv': false,
+              'logout_time': DateTime.now().toUtc().toIso8601String(),
+            })
+            .eq('mitarbeiter_id', user.id)
+            .eq('aktiv', true);
+      }
+
+      print('Logout erfolgreich');
+    } catch (e) {
+      print('Logout-Fehler: $e');
+    }
+  }
+
   Future<void> _updateLastLogin(String table, String id) async {
     try {
-      await supabase
-          .from(table)
-          .update({
-            'last_login': DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('id', id);
-
-      print('✅ last_login für $table erfolgreich aktualisiert');
+      await supabase.from(table).update({
+        'last_login': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', id);
     } catch (e) {
-      print('⚠️ Fehler beim Aktualisieren von last_login in Tabelle $table: $e');
+      print('Fehler beim Aktualisieren von last_login: $e');
     }
   }
 
-  Future<void> logout() async {
-    print('✅ Logout aufgerufen');
+  Future<void> _setMitarbeiterOnline({
+    required String mitarbeiterId,
+    required String? betriebId,
+  }) async {
+    if (betriebId == null || betriebId.isEmpty) return;
+
+    try {
+      // Alte offene Sessions dieses Mitarbeiters schließen
+      await supabase
+          .from('anwesenheit')
+          .update({
+            'aktiv': false,
+            'logout_time': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('mitarbeiter_id', mitarbeiterId)
+          .eq('aktiv', true);
+
+      // Neue aktive Session anlegen
+      await supabase.from('anwesenheit').insert({
+        'mitarbeiter_id': mitarbeiterId,
+        'betrieb_id': betriebId,
+        'login_time': DateTime.now().toUtc().toIso8601String(),
+        'aktiv': true,
+      });
+    } catch (e) {
+      print('Fehler beim Setzen von anwesenheit: $e');
+    }
   }
 }
