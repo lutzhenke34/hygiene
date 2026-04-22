@@ -188,242 +188,311 @@ class _EmployeeHomePageState extends ConsumerState<EmployeeHomePage> {
                       ),
                     ),
                     const SizedBox(height: 28),
-
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.green.shade100),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Meine offenen Aufgaben',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green.shade900,
-                            ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildOverviewTile(
+                            context: context,
+                            title: 'Aufgaben',
+                            subtitle: 'Offene Aufgaben',
+                            icon: Icons.assignment,
+                            color: Colors.green,
+                            countAsync: employeeAufgabenAsync,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EmployeeTaskListPage(
+                                    betriebId: betriebId,
+                                    rolle: aktuelleRolle,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Hier sehen Sie alle offenen Aufgaben passend zu Ihrer Rolle und zur aktuell aktiven Schicht.',
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    employeeAufgabenAsync.when(
-                      loading: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: CircularProgressIndicator(),
                         ),
-                      ),
-                      error: (e, _) => Text(
-                        'Fehler beim Laden der Aufgaben: $e',
-                      ),
-                      data: (aufgaben) {
-                        if (aufgaben.isEmpty) {
-                          return Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Text(
-                              'Für Ihre aktuelle Rolle und Schicht gibt es gerade keine offenen Aufgaben.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 15),
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: aufgaben.map((a) {
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              child: ListTile(
-                                leading: const Icon(
-                                  Icons.assignment,
-                                  color: Colors.orange,
-                                  size: 30,
-                                ),
-                                title: Text(
-                                  a.titel,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildOverviewTile(
+                            context: context,
+                            title: 'Hygiene',
+                            subtitle: 'Offene Hygieneaufgaben',
+                            icon: Icons.cleaning_services,
+                            color: Colors.blue,
+                            countAsync: employeeHygieneAufgabenAsync,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EmployeeHygieneTaskListPage(
+                                    betriebId: betriebId,
+                                    rolle: aktuelleRolle,
                                   ),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (a.beschreibung != null &&
-                                        a.beschreibung!.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(a.beschreibung!),
-                                      ),
-                                    if (a.faelligBis != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(
-                                          'Fällig bis: ${a.faelligBis!.toString().split(' ')[0]}',
-                                        ),
-                                      ),
-                                    if (a.rolle != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text('Rolle: ${a.rolle}'),
-                                      ),
-                                  ],
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(
-                                    Icons.check_circle_outline,
-                                    color: Colors.green,
-                                  ),
-                                  onPressed: () async {
-                                    await ref
-                                        .read(
-                                          aufgabeNotifierProvider(betriebId)
-                                              .notifier,
-                                        )
-                                        .toggleErledigt(a.id);
-                                  },
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.blue.shade100),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Meine offenen Hygieneaufgaben',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
+                              );
+                            },
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Hier sehen Sie alle offenen Hygieneaufgaben passend zu Ihrer Rolle und zur aktuell aktiven Schicht.',
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    employeeHygieneAufgabenAsync.when(
-                      loading: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: CircularProgressIndicator(),
                         ),
-                      ),
-                      error: (e, _) => Text(
-                        'Fehler beim Laden der Hygieneaufgaben: $e',
-                      ),
-                      data: (aufgaben) {
-                        if (aufgaben.isEmpty) {
-                          return Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Text(
-                              'Für Ihre aktuelle Rolle und Schicht gibt es gerade keine offenen Hygieneaufgaben.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 15),
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: aufgaben.map((a) {
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              child: ListTile(
-                                leading: const Icon(
-                                  Icons.cleaning_services,
-                                  color: Colors.blue,
-                                  size: 30,
-                                ),
-                                title: Text(
-                                  a.titel,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (a.beschreibung != null &&
-                                        a.beschreibung!.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(a.beschreibung!),
-                                      ),
-                                    if (a.faelligBis != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(
-                                          'Fällig bis: ${a.faelligBis!.toString().split(' ')[0]}',
-                                        ),
-                                      ),
-                                    if (a.rolle != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text('Rolle: ${a.rolle}'),
-                                      ),
-                                  ],
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(
-                                    Icons.check_circle_outline,
-                                    color: Colors.green,
-                                  ),
-                                  onPressed: () async {
-                                    await ref
-                                        .read(
-                                          hygieneAufgabeNotifierProvider(
-                                            betriebId,
-                                          ).notifier,
-                                        )
-                                        .toggleErledigt(a.id);
-                                  },
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
+                      ],
                     ),
                   ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildOverviewTile({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required AsyncValue<List<dynamic>> countAsync,
+    required VoidCallback onTap,
+  }) {
+    final count = countAsync.when(
+      data: (items) => items.length,
+      loading: () => 0,
+      error: (_, __) => 0,
+    );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: color.withOpacity(0.12),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class EmployeeTaskListPage extends ConsumerWidget {
+  final String betriebId;
+  final String rolle;
+
+  const EmployeeTaskListPage({
+    super.key,
+    required this.betriebId,
+    required this.rolle,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final aufgabenAsync = ref.watch(
+      employeeAufgabenProvider((betriebId: betriebId, rolle: rolle)),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Meine Aufgaben'),
+        backgroundColor: Colors.green.shade700,
+        foregroundColor: Colors.white,
+      ),
+      body: aufgabenAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Fehler: $e')),
+        data: (aufgaben) {
+          if (aufgaben.isEmpty) {
+            return const Center(
+              child: Text(
+                'Für Ihre aktuelle Rolle und Schicht gibt es gerade keine offenen Aufgaben.',
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: aufgaben.length,
+            itemBuilder: (context, index) {
+              final a = aufgaben[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.assignment,
+                    color: Colors.orange,
+                    size: 30,
+                  ),
+                  title: Text(
+                    a.titel,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (a.beschreibung != null && a.beschreibung!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(a.beschreibung!),
+                        ),
+                      if (a.faelligBis != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Fällig bis: ${a.faelligBis!.toString().split(' ')[0]}',
+                          ),
+                        ),
+                      if (a.rolle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text('Rolle: ${a.rolle}'),
+                        ),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                    ),
+                    onPressed: () async {
+                      await ref
+                          .read(aufgabeNotifierProvider(betriebId).notifier)
+                          .toggleErledigt(a.id);
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class EmployeeHygieneTaskListPage extends ConsumerWidget {
+  final String betriebId;
+  final String rolle;
+
+  const EmployeeHygieneTaskListPage({
+    super.key,
+    required this.betriebId,
+    required this.rolle,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final aufgabenAsync = ref.watch(
+      employeeHygieneAufgabenProvider((betriebId: betriebId, rolle: rolle)),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Meine Hygieneaufgaben'),
+        backgroundColor: Colors.green.shade700,
+        foregroundColor: Colors.white,
+      ),
+      body: aufgabenAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Fehler: $e')),
+        data: (aufgaben) {
+          if (aufgaben.isEmpty) {
+            return const Center(
+              child: Text(
+                'Für Ihre aktuelle Rolle und Schicht gibt es gerade keine offenen Hygieneaufgaben.',
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: aufgaben.length,
+            itemBuilder: (context, index) {
+              final a = aufgaben[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.cleaning_services,
+                    color: Colors.blue,
+                    size: 30,
+                  ),
+                  title: Text(
+                    a.titel,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (a.beschreibung != null && a.beschreibung!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(a.beschreibung!),
+                        ),
+                      if (a.faelligBis != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Fällig bis: ${a.faelligBis!.toString().split(' ')[0]}',
+                          ),
+                        ),
+                      if (a.rolle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text('Rolle: ${a.rolle}'),
+                        ),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                    ),
+                    onPressed: () async {
+                      await ref
+                          .read(
+                            hygieneAufgabeNotifierProvider(betriebId).notifier,
+                          )
+                          .toggleErledigt(a.id);
+                    },
+                  ),
                 ),
               );
             },
