@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/hygiene_aufgabe_provider.dart';
 import '../../../providers/kuehlgeraet_provider.dart';
 import '../../../providers/geraet_provider.dart';
+import '../../../providers/rollen_provider.dart';
 import '../../../providers/schicht_provider.dart';
 import '../models/hygiene_aufgabe.dart';
 import '../models/kuehlgeraet.dart';
@@ -273,6 +274,7 @@ class _HygieneAufgabeDialogState extends ConsumerState<HygieneAufgabeDialog> {
   Widget build(BuildContext context) {
     final kuehlgeraeteAsync = ref.watch(kuehlgeraetNotifierProvider(widget.betriebId));
     final geraeteAsync = ref.watch(geraetNotifierProvider(widget.betriebId));
+    final rollenAsync = ref.watch(rollenProvider);
     final schichtenAsync = ref.watch(schichtNotifierProvider(widget.betriebId));
     final alleAufgabenAsync = ref.watch(hygieneAufgabeNotifierProvider(widget.betriebId));
 
@@ -389,18 +391,35 @@ class _HygieneAufgabeDialogState extends ConsumerState<HygieneAufgabeDialog> {
 
               const SizedBox(height: 16),
 
-              DropdownButtonFormField<String>(
-                value: _selectedRolle,
-                decoration: const InputDecoration(labelText: 'Rolle / Team *'),
-                validator: (v) => v == null ? 'Rolle ist Pflicht' : null,
-                items: const [
-                  DropdownMenuItem(value: 'Koch', child: Text('Koch')),
-                  DropdownMenuItem(value: 'Küchenhilfe', child: Text('Küchenhilfe')),
-                  DropdownMenuItem(value: 'Betriebsleiter', child: Text('Betriebsleiter')),
-                  DropdownMenuItem(value: 'Reinigungskraft', child: Text('Reinigungskraft')),
-                  DropdownMenuItem(value: 'Alle', child: Text('Alle')),
-                ],
-                onChanged: (val) => setState(() => _selectedRolle = val),
+              rollenAsync.when(
+                data: (rollen) {
+                  final rollenItems = <String>{
+                    ...rollen,
+                    if (_selectedRolle != null && _selectedRolle!.trim().isNotEmpty)
+                      _selectedRolle!,
+                    'Alle',
+                  }.toList()
+                    ..sort((a, b) {
+                      if (a == 'Alle') return 1;
+                      if (b == 'Alle') return -1;
+                      return a.toLowerCase().compareTo(b.toLowerCase());
+                    });
+
+                  return DropdownButtonFormField<String>(
+                    value: _selectedRolle,
+                    decoration: const InputDecoration(labelText: 'Rolle / Team *'),
+                    validator: (v) => v == null ? 'Rolle ist Pflicht' : null,
+                    items: rollenItems
+                        .map(
+                          (rolle) =>
+                              DropdownMenuItem(value: rolle, child: Text(rolle)),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedRolle = val),
+                  );
+                },
+                loading: () => const CircularProgressIndicator(),
+                error: (e, _) => Text('Fehler beim Laden der Rollen: $e'),
               ),
 
               const SizedBox(height: 16),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/aufgabe_provider.dart';
+import '../../../providers/rollen_provider.dart';
 import '../../../providers/schicht_provider.dart';
 import '../models/aufgabe.dart';
 import '../models/schicht.dart';
@@ -168,15 +169,6 @@ class _AufgabeDialogState extends ConsumerState<AufgabeDialog> {
     {'tage': 90, 'label': 'Alle 3 Monate'},
   ];
 
-  final List<String> _rollen = [
-    'Koch',
-    'Küchenhilfe',
-    'Betriebsleiter',
-    'Reinigungskraft',
-    'Service',
-    'Alle'
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -237,6 +229,7 @@ class _AufgabeDialogState extends ConsumerState<AufgabeDialog> {
   @override
   Widget build(BuildContext context) {
     final schichtenAsync = ref.watch(schichtNotifierProvider(widget.betriebId));
+    final rollenAsync = ref.watch(rollenProvider);
 
     return AlertDialog(
       title: Text(widget.bestehendeAufgabe == null ? 'Neue Aufgabe' : 'Aufgabe bearbeiten'),
@@ -253,11 +246,34 @@ class _AufgabeDialogState extends ConsumerState<AufgabeDialog> {
               ),
               const SizedBox(height: 16),
 
-              DropdownButtonFormField<String>(
-                value: _selectedRolle,
-                decoration: const InputDecoration(labelText: 'Rolle / Team'),
-                items: _rollen.map((rolle) => DropdownMenuItem(value: rolle, child: Text(rolle))).toList(),
-                onChanged: (val) => setState(() => _selectedRolle = val),
+              rollenAsync.when(
+                data: (rollen) {
+                  final rollenItems = <String>{
+                    ...rollen,
+                    if (_selectedRolle != null && _selectedRolle!.trim().isNotEmpty)
+                      _selectedRolle!,
+                    'Alle',
+                  }.toList()
+                    ..sort((a, b) {
+                      if (a == 'Alle') return 1;
+                      if (b == 'Alle') return -1;
+                      return a.toLowerCase().compareTo(b.toLowerCase());
+                    });
+
+                  return DropdownButtonFormField<String>(
+                    value: _selectedRolle,
+                    decoration: const InputDecoration(labelText: 'Rolle / Team'),
+                    items: rollenItems
+                        .map(
+                          (rolle) =>
+                              DropdownMenuItem(value: rolle, child: Text(rolle)),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedRolle = val),
+                  );
+                },
+                loading: () => const CircularProgressIndicator(),
+                error: (e, _) => Text('Fehler beim Laden der Rollen: $e'),
               ),
               const SizedBox(height: 16),
 
