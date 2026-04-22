@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,7 +34,7 @@ class AufgabeNotifier extends _$AufgabeNotifier {
       }
       ref.invalidateSelf();
     } catch (e) {
-      print('❌ Fehler bei Aufgabe addOrUpdate: $e');
+      print('Fehler bei Aufgabe addOrUpdate: $e');
       rethrow;
     }
   }
@@ -43,7 +44,7 @@ class AufgabeNotifier extends _$AufgabeNotifier {
       await supabase.from('aufgaben').delete().eq('id', id);
       ref.invalidateSelf();
     } catch (e) {
-      print('❌ Fehler beim Löschen der Aufgabe: $e');
+      print('Fehler beim Loeschen der Aufgabe: $e');
       rethrow;
     }
   }
@@ -67,7 +68,7 @@ class AufgabeNotifier extends _$AufgabeNotifier {
 
       ref.invalidateSelf();
     } catch (e) {
-      print('❌ Fehler beim Umschalten von erledigt: $e');
+      print('Fehler beim Umschalten von erledigt: $e');
       rethrow;
     }
   }
@@ -75,29 +76,26 @@ class AufgabeNotifier extends _$AufgabeNotifier {
 
 typedef EmployeeAufgabenParams = ({String betriebId, String rolle});
 
-@riverpod
-Future<List<Aufgabe>> employeeAufgaben(
-  EmployeeAufgabenRef ref,
-  EmployeeAufgabenParams params,
-) async {
-  final schichtNotifier =
-      ref.read(schichtNotifierProvider(params.betriebId).notifier);
-  final aktuelleSchicht =
-      await schichtNotifier.getAktuelleSchicht(params.betriebId);
+final employeeAufgabenProvider =
+    FutureProvider.family<List<Aufgabe>, EmployeeAufgabenParams>(
+  (ref, params) async {
+    final schichtNotifier =
+        ref.read(schichtNotifierProvider(params.betriebId).notifier);
+    final aktuelleSchicht =
+        await schichtNotifier.getAktuelleSchicht(params.betriebId);
 
-  final alleAufgaben =
-      await ref.watch(aufgabeNotifierProvider(params.betriebId).future);
+    final alleAufgaben =
+        await ref.watch(aufgabeNotifierProvider(params.betriebId).future);
 
-  return alleAufgaben.where((a) {
-    final rollePasst = a.rolle == null ||
-        a.rolle == 'Alle' ||
-        a.rolle!.toLowerCase() == params.rolle.toLowerCase();
+    return alleAufgaben.where((a) {
+      final rollePasst = a.rolle == null ||
+          a.rolle == 'Alle' ||
+          a.rolle!.toLowerCase() == params.rolle.toLowerCase();
 
-    final schichtPasst =
-        a.schichtId == null || a.schichtId == aktuelleSchicht?.id;
+      final schichtPasst =
+          a.schichtId == null || a.schichtId == aktuelleSchicht?.id;
 
-    final offen = !a.erledigt;
-
-    return rollePasst && schichtPasst && offen;
-  }).toList();
-}
+      return rollePasst && schichtPasst && !a.erledigt;
+    }).toList();
+  },
+);

@@ -6,7 +6,7 @@ part of 'schicht_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$schichtNotifierHash() => r'4492a8f5982cb932066256663c8f38ffd9853345';
+String _$schichtNotifierHash() => r'c59773b42def2fc5153c4d9dfaef1fe1460c7251';
 
 /// Copied from Dart SDK
 class _SystemHash {
