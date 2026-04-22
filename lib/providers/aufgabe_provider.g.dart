@@ -6,7 +6,7 @@ part of 'aufgabe_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$employeeAufgabenHash() => r'eb2265e67fadd668cb503f5e141562e6edfc949f';
+String _$aufgabeNotifierHash() => r'a4a5e01a4fa7f01bdaa0cc0a0e84f89caeb712fd';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -28,139 +28,6 @@ class _SystemHash {
     return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
   }
 }
-
-/// See also [employeeAufgaben].
-@ProviderFor(employeeAufgaben)
-const employeeAufgabenProvider = EmployeeAufgabenFamily();
-
-/// See also [employeeAufgaben].
-class EmployeeAufgabenFamily extends Family<AsyncValue<List<Aufgabe>>> {
-  /// See also [employeeAufgaben].
-  const EmployeeAufgabenFamily();
-
-  /// See also [employeeAufgaben].
-  EmployeeAufgabenProvider call(
-    ({String betriebId, String rolle}) params,
-  ) {
-    return EmployeeAufgabenProvider(
-      params,
-    );
-  }
-
-  @override
-  EmployeeAufgabenProvider getProviderOverride(
-    covariant EmployeeAufgabenProvider provider,
-  ) {
-    return call(
-      provider.params,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'employeeAufgabenProvider';
-}
-
-/// See also [employeeAufgaben].
-class EmployeeAufgabenProvider
-    extends AutoDisposeFutureProvider<List<Aufgabe>> {
-  /// See also [employeeAufgaben].
-  EmployeeAufgabenProvider(
-    ({String betriebId, String rolle}) params,
-  ) : this._internal(
-          (ref) => employeeAufgaben(
-            ref as EmployeeAufgabenRef,
-            params,
-          ),
-          from: employeeAufgabenProvider,
-          name: r'employeeAufgabenProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$employeeAufgabenHash,
-          dependencies: EmployeeAufgabenFamily._dependencies,
-          allTransitiveDependencies:
-              EmployeeAufgabenFamily._allTransitiveDependencies,
-          params: params,
-        );
-
-  EmployeeAufgabenProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.params,
-  }) : super.internal();
-
-  final ({String betriebId, String rolle}) params;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<Aufgabe>> Function(EmployeeAufgabenRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: EmployeeAufgabenProvider._internal(
-        (ref) => create(ref as EmployeeAufgabenRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        params: params,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<List<Aufgabe>> createElement() {
-    return _EmployeeAufgabenProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is EmployeeAufgabenProvider && other.params == params;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, params.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
-}
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin EmployeeAufgabenRef on AutoDisposeFutureProviderRef<List<Aufgabe>> {
-  /// The parameter `params` of this provider.
-  ({String betriebId, String rolle}) get params;
-}
-
-class _EmployeeAufgabenProviderElement
-    extends AutoDisposeFutureProviderElement<List<Aufgabe>>
-    with EmployeeAufgabenRef {
-  _EmployeeAufgabenProviderElement(super.provider);
-
-  @override
-  ({String betriebId, String rolle}) get params =>
-      (origin as EmployeeAufgabenProvider).params;
-}
-
-String _$aufgabeNotifierHash() => r'c80c6bed4bb5284719e6a10a27ad149f50ce28dd';
 
 abstract class _$AufgabeNotifier
     extends BuildlessAutoDisposeAsyncNotifier<List<Aufgabe>> {
